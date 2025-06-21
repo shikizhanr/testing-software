@@ -52,19 +52,43 @@ def start_transfer(driver, balance=30000, reserved=20001):
 
 def test_p2_successful_transfer_within_limit(browser):
     start_transfer(browser, balance=10000, reserved=1000)
+    
+    # Получаем баланс ДО перевода
+    balance_element = WebDriverWait(browser, 10).until(EC.visibility_of_element_located(Locators.RUBLE_BALANCE))
+    balance_text = balance_element.text  # Пример: "На счету: 10 000 ₽"
+    initial_balance = int(''.join(filter(str.isdigit, balance_text)))
+
+    # Вводим данные карты и сумму
     card_input = WebDriverWait(browser, 10).until(EC.visibility_of_element_located(Locators.CARD_NUMBER_INPUT))
     card_input.clear()
     card_input.send_keys("1111222233334444")
-    
+
     amount_input = WebDriverWait(browser, 10).until(EC.visibility_of_element_located(Locators.TRANSFER_AMOUNT_INPUT))
     amount_input.clear()
     amount_input.send_keys("5000")
-    
+
+    # Чтение комиссии, если она есть
+    commission = 0
+    try:
+        commission_text = browser.find_element(*Locators.COMMISSION_VALUE).text  # Например: "Комиссия: 10 ₽"
+        commission = int(''.join(filter(str.isdigit, commission_text)))
+    except NoSuchElementException:
+        pass  # Если нет комиссии — окей
+
+    # Выполняем перевод
     WebDriverWait(browser, 10).until(EC.element_to_be_clickable(Locators.TRANSFER_BUTTON)).click()
-    
     alert = WebDriverWait(browser, 10).until(EC.alert_is_present())
     assert "принят банком" in alert.text
     alert.accept()
+
+    # Получаем баланс ПОСЛЕ перевода
+    new_balance_element = WebDriverWait(browser, 10).until(EC.visibility_of_element_located(Locators.RUBLE_BALANCE))
+    new_balance_text = new_balance_element.text
+    new_balance = int(''.join(filter(str.isdigit, new_balance_text)))
+
+    expected_balance = initial_balance - 5000 - commission
+    assert new_balance == expected_balance, f"Ожидалось {expected_balance}, но получили {new_balance}"
+
 
 def test_p2_letters_in_amount_field_fail(browser):
     start_transfer(browser)
@@ -93,15 +117,26 @@ def test_p2_transfer_over_limit_fails(browser):
 
 def test_p2_15_digit_card_number_fails(browser):
     start_transfer(browser)
+    
+    # Ввод 15-значного номера карты
     card_input = WebDriverWait(browser, 10).until(EC.visibility_of_element_located(Locators.CARD_NUMBER_INPUT))
     card_input.clear()
-    card_input.send_keys("123456789012345")
-    
+    card_input.send_keys("123456789012345")  # 15 цифр
+
+    # Проверка: поле ввода суммы не появляется
+    amount_fields = browser.find_elements(*Locators.TRANSFER_AMOUNT_INPUT)
+    assert len(amount_fields) == 0, "Поле суммы не должно появляться при некорректном номере карты"
+
+    # Проверка: отображается сообщение об ошибке
+    error_text = "Номер карты должен состояться из 16 цифр"
     try:
-        browser.find_element(*Locators.TRANSFER_AMOUNT_INPUT)
-        pytest.fail("Поле для ввода суммы не должно было появиться")
-    except NoSuchElementException:
-        pass
+        error_element = WebDriverWait(browser, 10).until(
+            EC.visibility_of_element_located((By.XPATH, f"//*[contains(text(), '{error_text}')]"))
+        )
+        assert error_text in error_element.text
+    except TimeoutException:
+        pytest.fail(f"Ожидалась ошибка: '{error_text}', но она не появилась.")
+
 
 def test_p2_card_placeholder_text_is_correct(browser):
     start_transfer(browser)
