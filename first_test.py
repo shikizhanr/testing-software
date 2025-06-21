@@ -52,7 +52,7 @@ def start_transfer(driver, balance=30000, reserved=20001):
 
 
 # Тест TC-3.1
-def test_p4_transfer_exact_available_amount_fails_due_to_commission(browser):
+def test_p1_transfer_exact_available_amount_fails_due_to_commission(browser):
     """Проверяет, что перевод точной доступной суммы невозможен из-за комиссии."""
     start_transfer(browser, balance=10000, reserved=0)
     card_input = WebDriverWait(browser, 10).until(EC.visibility_of_element_located(Locators.CARD_NUMBER_INPUT))
@@ -68,7 +68,7 @@ def test_p4_transfer_exact_available_amount_fails_due_to_commission(browser):
     assert "Недостаточно средств" in error_message.text
 
 # Тест TC-3.2
-def test_p4_success_notification_appears(browser):
+def test_p1_success_notification_appears(browser):
     """Проверяет, что при корректном переводе появляется уведомление."""
     start_transfer(browser, balance=5000, reserved=0)
     card_input = WebDriverWait(browser, 10).until(EC.visibility_of_element_located(Locators.CARD_NUMBER_INPUT))
@@ -86,8 +86,8 @@ def test_p4_success_notification_appears(browser):
     alert.accept()
 
 # Тест TC-3.3
-def test_p4_commission_is_calculated_incorrectly(browser):
-    """Проверяет дефект: комиссия округляется до десятых, а не вниз."""
+def test_p4_commission_bug_is_calculated_incorrectly(browser):
+    """Проверяет наличие дефекта: комиссия для 999 рассчитывается как 90 (неправильное округление)."""
     start_transfer(browser)
     card_input = WebDriverWait(browser, 10).until(EC.visibility_of_element_located(Locators.CARD_NUMBER_INPUT))
     card_input.clear()
@@ -101,13 +101,13 @@ def test_p4_commission_is_calculated_incorrectly(browser):
     assert "90" in commission.text
 
 # Тест TC-3.4
-def test_p4_page_title_is_correct(browser):
+def test_p1_page_title_is_correct(browser):
     """Проверяет, что заголовок страницы корректен."""
     browser.get("http://localhost:8000")
     assert browser.title == "F-Bank"
 
 # Тест TC-3.5
-def test_p4_negative_amount_transfer_is_possible(browser):
+def test_p1_negative_amount_transfer_is_possible(browser):
     """Проверяет дефект: возможен перевод отрицательной суммы, и баланс не меняется."""
     start_transfer(browser, balance=10000, reserved=0)
     initial_balance_element = WebDriverWait(browser, 10).until(EC.visibility_of_element_located(Locators.RUBLE_BALANCE))
