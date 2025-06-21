@@ -86,7 +86,7 @@ def test_p1_success_notification_appears(browser):
     alert.accept()
 
 # Тест TC-3.3
-def test_p4_commission_bug_is_calculated_incorrectly(browser):
+def test_p1_commission_bug_is_calculated_incorrectly(browser):
     """Проверяет наличие дефекта: комиссия для 999 рассчитывается как 90 (неправильное округление)."""
     start_transfer(browser)
     card_input = WebDriverWait(browser, 10).until(EC.visibility_of_element_located(Locators.CARD_NUMBER_INPUT))
