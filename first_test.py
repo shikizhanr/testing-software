@@ -51,75 +51,66 @@ def start_transfer(driver, balance=30000, reserved=20001):
         pytest.fail("Не удалось найти ключевой элемент для начала теста. Смотрите HTML-код выше.")
 
 
-# Тест TC-4.1
-def test_p1_max_possible_transfer_shows_alert(browser):
-    """Проверяет, что при успешном переводе появляется alert-уведомление."""
-    start_transfer(browser, balance=9999, reserved=0)
+# Тест TC-3.1
+def test_p4_transfer_exact_available_amount_fails_due_to_commission(browser):
+    start_transfer(browser, balance=10000, reserved=0)
     card_input = WebDriverWait(browser, 10).until(EC.visibility_of_element_located(Locators.CARD_NUMBER_INPUT))
     card_input.clear()
     card_input.send_keys("1111222233334444")
-    
+
     amount_input = WebDriverWait(browser, 10).until(EC.visibility_of_element_located(Locators.TRANSFER_AMOUNT_INPUT))
     amount_input.clear()
-    amount_input.send_keys("9090")
+    amount_input.send_keys("10000")
     
-    transfer_button = WebDriverWait(browser, 10).until(EC.element_to_be_clickable(Locators.TRANSFER_BUTTON))
-    transfer_button.click()
+    error_message = WebDriverWait(browser, 10).until(EC.visibility_of_element_located(Locators.ERROR_MESSAGE))
+    assert "Недостаточно средств!!!" in error_message.text
+
+# Тест TC-3.2
+def test_p3_negative_amount_transfer_fails(browser):
+    start_transfer(browser)
+    card_input = WebDriverWait(browser, 10).until(EC.visibility_of_element_located(Locators.CARD_NUMBER_INPUT))
+    card_input.clear()
+    card_input.send_keys("1111222233334444")
+
+    amount_input = WebDriverWait(browser, 10).until(EC.visibility_of_element_located(Locators.TRANSFER_AMOUNT_INPUT))
+    amount_input.clear()
+    amount_input.send_keys("-100")
+    
+    assert "-" not in amount_input.get_attribute("value")
+
+
+# Тест TC-3.3
+def test_p4_success_notification_appears(browser):
+    start_transfer(browser, balance=5000, reserved=0)
+    card_input = WebDriverWait(browser, 10).until(EC.visibility_of_element_located(Locators.CARD_NUMBER_INPUT))
+    card_input.clear()
+    card_input.send_keys("1111222233334444")
+
+    amount_input = WebDriverWait(browser, 10).until(EC.visibility_of_element_located(Locators.TRANSFER_AMOUNT_INPUT))
+    amount_input.clear()
+    amount_input.send_keys("100")
+    
+    WebDriverWait(browser, 10).until(EC.element_to_be_clickable(Locators.TRANSFER_BUTTON)).click()
     
     alert = WebDriverWait(browser, 10).until(EC.alert_is_present())
     assert "принят банком" in alert.text
     alert.accept()
 
-# Тест TC-4.2
-def test_p1_transfer_button_disappears_on_clear(browser):
-    """Проверяет, что кнопка 'Перевести' видна при дефолтном значении, но исчезает при очистке поля."""
+# Тест TC-3.4
+def test_p4_commission_is_calculated_correctly(browser):
     start_transfer(browser)
     card_input = WebDriverWait(browser, 10).until(EC.visibility_of_element_located(Locators.CARD_NUMBER_INPUT))
     card_input.clear()
     card_input.send_keys("1111222233334444")
-
-    WebDriverWait(browser, 10).until(EC.visibility_of_element_located(Locators.TRANSFER_BUTTON))
-
+    
     amount_input = WebDriverWait(browser, 10).until(EC.visibility_of_element_located(Locators.TRANSFER_AMOUNT_INPUT))
     amount_input.clear()
+    amount_input.send_keys("999")
     
-    assert WebDriverWait(browser, 5).until(EC.invisibility_of_element_located(Locators.TRANSFER_BUTTON))
+    commission = WebDriverWait(browser, 10).until(EC.visibility_of_element_located(Locators.COMMISSION_VALUE))
+    assert "99" in commission.text
 
-# Тест TC-4.3
-def test_p1_card_input_accepts_only_digits(browser):
-    start_transfer(browser)
-    card_input = WebDriverWait(browser, 10).until(EC.visibility_of_element_located(Locators.CARD_NUMBER_INPUT))
-    card_input.clear()
-    card_input.send_keys("abcd1234efgh5678")
-    
-    assert card_input.get_attribute("value") == "12345678"
-
-# Тест TC-4.4
-def test_p1_logo_is_present(browser):
-    """Проверяет наличие логотипа."""
+# Тест TC-3.5
+def test_p4_page_title_is_correct(browser):
     browser.get("http://localhost:8000")
-    logo = WebDriverWait(browser, 10).until(EC.visibility_of_element_located(Locators.F_BANK_LOGO))
-    assert logo.is_displayed() and "F-Bank" in logo.text
-
-# Тест TC-4.5
-def test_p1_balance_does_not_update_after_transfer(browser):
-    """Проверяет дефект: баланс на странице не обновляется после перевода."""
-    start_transfer(browser, balance=10000, reserved=0)
-    initial_balance_element = WebDriverWait(browser, 10).until(EC.visibility_of_element_located(Locators.RUBLE_BALANCE))
-    initial_balance_text = initial_balance_element.text
-
-    card_input = WebDriverWait(browser, 10).until(EC.visibility_of_element_located(Locators.CARD_NUMBER_INPUT))
-    card_input.clear()
-    card_input.send_keys("1111222233334444")
-    
-    amount_input = WebDriverWait(browser, 10).until(EC.visibility_of_element_located(Locators.TRANSFER_AMOUNT_INPUT))
-    amount_input.clear()
-    amount_input.send_keys("1000")
-    
-    WebDriverWait(browser, 10).until(EC.element_to_be_clickable(Locators.TRANSFER_BUTTON)).click()
-    WebDriverWait(browser, 10).until(EC.alert_is_present()).accept()
-    
-    time.sleep(1) 
-
-    final_balance_text = browser.find_element(*Locators.RUBLE_BALANCE).text
-    assert final_balance_text == initial_balance_text
+    assert browser.title == "F-Bank"
