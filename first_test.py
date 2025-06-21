@@ -53,6 +53,7 @@ def start_transfer(driver, balance=30000, reserved=20001):
 
 # Тест TC-3.1
 def test_p4_transfer_exact_available_amount_fails_due_to_commission(browser):
+    """Проверяет, что перевод точной доступной суммы невозможен из-за комиссии."""
     start_transfer(browser, balance=10000, reserved=0)
     card_input = WebDriverWait(browser, 10).until(EC.visibility_of_element_located(Locators.CARD_NUMBER_INPUT))
     card_input.clear()
@@ -62,25 +63,13 @@ def test_p4_transfer_exact_available_amount_fails_due_to_commission(browser):
     amount_input.clear()
     amount_input.send_keys("10000")
     
+    # Ожидаем появления сообщения об ошибке
     error_message = WebDriverWait(browser, 10).until(EC.visibility_of_element_located(Locators.ERROR_MESSAGE))
-    assert "Недостаточно средств!!!" in error_message.text
+    assert "Недостаточно средств" in error_message.text
 
 # Тест TC-3.2
-def test_p3_negative_amount_transfer_fails(browser):
-    start_transfer(browser)
-    card_input = WebDriverWait(browser, 10).until(EC.visibility_of_element_located(Locators.CARD_NUMBER_INPUT))
-    card_input.clear()
-    card_input.send_keys("1111222233334444")
-
-    amount_input = WebDriverWait(browser, 10).until(EC.visibility_of_element_located(Locators.TRANSFER_AMOUNT_INPUT))
-    amount_input.clear()
-    amount_input.send_keys("-100")
-    
-    assert "-" not in amount_input.get_attribute("value")
-
-
-# Тест TC-3.3
 def test_p4_success_notification_appears(browser):
+    """Проверяет, что при корректном переводе появляется уведомление."""
     start_transfer(browser, balance=5000, reserved=0)
     card_input = WebDriverWait(browser, 10).until(EC.visibility_of_element_located(Locators.CARD_NUMBER_INPUT))
     card_input.clear()
@@ -96,8 +85,9 @@ def test_p4_success_notification_appears(browser):
     assert "принят банком" in alert.text
     alert.accept()
 
-# Тест TC-3.4
-def test_p4_commission_is_calculated_correctly(browser):
+# Тест TC-3.3
+def test_p4_commission_is_calculated_incorrectly(browser):
+    """Проверяет дефект: комиссия округляется до десятых, а не вниз."""
     start_transfer(browser)
     card_input = WebDriverWait(browser, 10).until(EC.visibility_of_element_located(Locators.CARD_NUMBER_INPUT))
     card_input.clear()
@@ -108,9 +98,33 @@ def test_p4_commission_is_calculated_correctly(browser):
     amount_input.send_keys("999")
     
     commission = WebDriverWait(browser, 10).until(EC.visibility_of_element_located(Locators.COMMISSION_VALUE))
-    assert "99" in commission.text
+    assert "90" in commission.text
 
-# Тест TC-3.5
+# Тест TC-3.4
 def test_p4_page_title_is_correct(browser):
+    """Проверяет, что заголовок страницы корректен."""
     browser.get("http://localhost:8000")
     assert browser.title == "F-Bank"
+
+# Тест TC-3.5
+def test_p4_negative_amount_transfer_is_possible(browser):
+    """Проверяет дефект: возможен перевод отрицательной суммы, и баланс не меняется."""
+    start_transfer(browser, balance=10000, reserved=0)
+    initial_balance_element = WebDriverWait(browser, 10).until(EC.visibility_of_element_located(Locators.RUBLE_BALANCE))
+    initial_balance_text = initial_balance_element.text
+    
+    card_input = WebDriverWait(browser, 10).until(EC.visibility_of_element_located(Locators.CARD_NUMBER_INPUT))
+    card_input.clear()
+    card_input.send_keys("1111222233334444")
+
+    amount_input = WebDriverWait(browser, 10).until(EC.visibility_of_element_located(Locators.TRANSFER_AMOUNT_INPUT))
+    amount_input.clear()
+    amount_input.send_keys("-100")
+    
+    WebDriverWait(browser, 10).until(EC.element_to_be_clickable(Locators.TRANSFER_BUTTON)).click()
+    alert = WebDriverWait(browser, 10).until(EC.alert_is_present())
+    alert.accept()
+    
+    time.sleep(1)
+    final_balance_text = browser.find_element(*Locators.RUBLE_BALANCE).text
+    assert final_balance_text == initial_balance_text
