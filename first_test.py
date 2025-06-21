@@ -87,7 +87,6 @@ def test_p1_transfer_button_disappears_on_clear(browser):
 
 # Тест TC-4.3
 def test_p1_card_input_accepts_only_digits(browser):
-    """Проверяет, что поле ввода карты не принимает буквы."""
     start_transfer(browser)
     card_input = WebDriverWait(browser, 10).until(EC.visibility_of_element_located(Locators.CARD_NUMBER_INPUT))
     card_input.clear()
