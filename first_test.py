@@ -1,7 +1,8 @@
 import pytest
-import math
+import time
 from selenium import webdriver
 from selenium.webdriver.common.by import By
+
 from selenium.webdriver.edge.service import Service as EdgeService
 from webdriver_manager.microsoft import EdgeChromiumDriverManager
 
@@ -39,7 +40,6 @@ def browser():
 # --- Вспомогательная функция для начала перевода ---
 def start_transfer(driver, balance=30000, reserved=20001):
     driver.get(f"http://localhost:8000/?balance={balance}&reserved={reserved}")
-    
     try:
         ruble_account = WebDriverWait(driver, 15).until(
             EC.element_to_be_clickable(Locators.RUBLE_ACCOUNT_CARD)
@@ -86,8 +86,8 @@ def test_p1_success_notification_appears(browser):
     alert.accept()
 
 # Тест TC-3.3
-def test_p1_commission_bug_is_calculated_incorrectly(browser):
-    """Проверяет наличие дефекта: комиссия для 999 рассчитывается как 90 (неправильное округление)."""
+def test_p1_commission_is_calculated_correctly(browser):
+    """Проверяет, что комиссия для 999 рассчитывается как 99 (округление вниз)."""
     start_transfer(browser)
     card_input = WebDriverWait(browser, 10).until(EC.visibility_of_element_located(Locators.CARD_NUMBER_INPUT))
     card_input.clear()
@@ -97,8 +97,9 @@ def test_p1_commission_bug_is_calculated_incorrectly(browser):
     amount_input.clear()
     amount_input.send_keys("999")
     
+    # Проверяем ПРАВИЛЬНЫЙ ожидаемый результат.
     commission = WebDriverWait(browser, 10).until(EC.visibility_of_element_located(Locators.COMMISSION_VALUE))
-    assert "90" in commission.text
+    assert "99" in commission.text
 
 # Тест TC-3.4
 def test_p1_page_title_is_correct(browser):
@@ -107,11 +108,9 @@ def test_p1_page_title_is_correct(browser):
     assert browser.title == "F-Bank"
 
 # Тест TC-3.5
-def test_p1_negative_amount_transfer_is_possible(browser):
-    """Проверяет дефект: возможен перевод отрицательной суммы, и баланс не меняется."""
+def test_p4_negative_amount_transfer_is_blocked(browser):
+    """Проверяет, что появляется ошибка валидации при вводе отрицательной суммы."""
     start_transfer(browser, balance=10000, reserved=0)
-    initial_balance_element = WebDriverWait(browser, 10).until(EC.visibility_of_element_located(Locators.RUBLE_BALANCE))
-    initial_balance_text = initial_balance_element.text
     
     card_input = WebDriverWait(browser, 10).until(EC.visibility_of_element_located(Locators.CARD_NUMBER_INPUT))
     card_input.clear()
@@ -121,10 +120,5 @@ def test_p1_negative_amount_transfer_is_possible(browser):
     amount_input.clear()
     amount_input.send_keys("-100")
     
-    WebDriverWait(browser, 10).until(EC.element_to_be_clickable(Locators.TRANSFER_BUTTON)).click()
-    alert = WebDriverWait(browser, 10).until(EC.alert_is_present())
-    alert.accept()
-    
-    time.sleep(1)
-    final_balance_text = browser.find_element(*Locators.RUBLE_BALANCE).text
-    assert final_balance_text == initial_balance_text
+    error_message = WebDriverWait(browser, 5).until(EC.visibility_of_element_located(Locators.AMOUNT_VALIDATION_ERROR))
+    assert "Сумма не может быть отрицательной" in error_message.text
