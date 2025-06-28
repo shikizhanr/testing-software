@@ -1,0 +1,38 @@
+name: Selenium Tests
+
+on:
+  push:
+    branches:
+      - main 
+  pull_request:
+    branches:
+      - main  
+
+jobs:
+  build:
+    runs-on: ubuntu-latest  
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4  
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.9'  
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install selenium pytest  
+        sudo apt-get update
+        sudo apt-get install -y chromium-browser chromium-chromedriver
+
+    - name: Start local banking service
+      run: |
+        python -m http.server 8000 &
+        sleep 5
+
+    - name: Run Selenium tests with Pytest
+      run: |
+        pytest --verbose --strict-markers # --verbose для более детального вывода, --strict-markers если используете маркеры

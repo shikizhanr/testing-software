@@ -2,9 +2,7 @@ import pytest
 import time
 from selenium import webdriver
 from selenium.webdriver.common.by import By
-
-from selenium.webdriver.edge.service import Service as EdgeService
-from webdriver_manager.microsoft import EdgeChromiumDriverManager
+from selenium.webdriver.chrome.options import Options 
 
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -21,17 +19,22 @@ class Locators:
     COMMISSION_VALUE = (By.XPATH, "//p[contains(text(), 'Комиссия:')]")
 
     ERROR_MESSAGE = (By.XPATH, "//*[contains(text(), 'Недостаточно средств на счете')]")
-
+    AMOUNT_VALIDATION_ERROR = (By.XPATH, "//input[@type='number' and @name='amount']/following-sibling::p[contains(@class, 'error-message')]")
+    # Или, если ошибка появляется как всплывающее окно или в другом месте
+    # AMOUT_VALIDATION_ERROR = (By.XPATH, "//*[contains(text(), 'Сумма не может быть отрицательной')]")
 
 # --- Фикстура для инициализации и закрытия браузера ---
 @pytest.fixture
 def browser():
-    print("\nНастройка драйвера для Edge")
-    service = EdgeService(executable_path=EdgeChromiumDriverManager().install())
-    options = webdriver.EdgeOptions()
-    driver = webdriver.Edge(service=service, options=options)
+    print("\nНастройка драйвера для Chrome (для CI)")
+    chrome_options = Options()
+    chrome_options.add_argument("--headless") 
+    chrome_options.add_argument("--no-sandbox") 
+    chrome_options.add_argument("--disable-dev-shm-usage")
+    chrome_options.add_argument("--window-size=1920,1080") 
+
+    driver = webdriver.Chrome(options=chrome_options)
     
-    driver.implicitly_wait(5)
     yield driver
     print("\nЗакрытие драйвера")
     driver.quit()
