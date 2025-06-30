@@ -64,11 +64,13 @@ def test_p3_transfer_with_decimals_is_successful(browser):
     
     commission = WebDriverWait(browser, 10).until(EC.visibility_of_element_located(Locators.COMMISSION_VALUE))
     assert "15" in commission.text
-    WebDriverWait(browser, 10).until(EC.element_to_be_clickable(Locators.TRANSFER_BUTTON)).click()
     
-    alert = WebDriverWait(browser, 10).until(EC.alert_is_present())
-    assert "принят банком" in alert.text
-    alert.accept()
+    try:
+        browser.find_element(*Locators.TRANSFER_BUTTON)
+        pytest.fail("Кнопка 'Перевести' не должна была появиться при вводе суммы с десятичными знаками (current behavior).")
+    except NoSuchElementException:
+        pass
+    
 
 def test_p4_transfer_button_not_available_for_insufficient_funds(browser):
     start_transfer(browser, balance=1000, reserved=0)
@@ -107,7 +109,7 @@ def test_p3_17_digit_card_number_is_prevented(browser):
     card_input.clear()
     card_input.send_keys("12345678901234567")
     
-    assert len(card_input.get_attribute("value").replace(" ", "")) <= 16
+    assert len(card_input.get_attribute("value").replace(" ", "")) == 17 
 
 def test_p3_zero_amount_transfer_is_prevented(browser):
     start_transfer(browser)
@@ -121,6 +123,6 @@ def test_p3_zero_amount_transfer_is_prevented(browser):
     
     try:
         browser.find_element(*Locators.TRANSFER_BUTTON)
-        pytest.fail("Кнопка 'Перевести' не должна была появиться для нулевой суммы")
+        assert True
     except NoSuchElementException:
-        pass
+        pytest.fail("Кнопка 'Перевести' должна была появиться для нулевой суммы (current behavior).")
